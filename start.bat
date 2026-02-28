@@ -24,7 +24,7 @@ call :require_command cloudflared || goto :fatal
 
 if not exist "node_modules" (
     call :log "[setup] node_modules не найден. Выполняю npm install..."
-    call :run_and_log "npm install" npm install || goto :fatal
+    call :run_and_log "npm install" || goto :fatal
 ) else (
     call :log "[setup] Зависимости уже установлены."
 )
@@ -39,6 +39,7 @@ if not defined SERVER_PID (
 
 call :log "[server] PID=%SERVER_PID%"
 timeout /t 2 /nobreak >nul
+call :ensure_server_alive || goto :fatal
 
 echo.
 echo   ⚙  SHIFT FROM HELL  ⚙
@@ -68,16 +69,24 @@ call :log "[check] Найдена команда: %~1"
 exit /b 0
 
 :run_and_log
-set "STEP_NAME=%~1"
-shift
-call :log "[run] %STEP_NAME%"
-cmd /c "%*" >> "%MAIN_LOG%" 2>&1
+set "STEP_CMD=%~1"
+call :log "[run] !STEP_CMD!"
+cmd /c "!STEP_CMD!" >> "%MAIN_LOG%" 2>&1
 if errorlevel 1 (
-    call :log "[error] Ошибка на шаге: %STEP_NAME% (код !errorlevel!)."
+    call :log "[error] Ошибка на шаге: !STEP_CMD! (код !errorlevel!)."
     call :show_tail "%MAIN_LOG%"
     exit /b 1
 )
-call :log "[ok] Шаг успешно завершён: %STEP_NAME%"
+call :log "[ok] Шаг успешно завершён: !STEP_CMD!"
+exit /b 0
+
+:ensure_server_alive
+tasklist /FI "PID eq %SERVER_PID%" | find "%SERVER_PID%" >nul
+if errorlevel 1 (
+    call :log "[error] Сервер завершился сразу после запуска. Проверяю лог сервера..."
+    call :show_tail "%SERVER_LOG%"
+    exit /b 1
+)
 exit /b 0
 
 :show_tail

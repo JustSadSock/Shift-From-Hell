@@ -46,8 +46,9 @@ function fmtTime(ms) {
 
 // ── WebSocket ────────────────────────────────────────────────────────────
 function connect(onOpen) {
+  const SERVER_HOST = 'irgri.uk';
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}`);
+  ws = new WebSocket(`${proto}://${SERVER_HOST}`);
 
   ws.onopen = () => { if (onOpen) onOpen(); };
 
