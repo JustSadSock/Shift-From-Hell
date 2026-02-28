@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shift From Hell — Слепой Завод</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ── Night-shift overlay ─────────────────────────────────────────── -->
+<div id="lights-overlay">
+  <div class="night-text">⚡ АВАРИЯ ЭЛЕКТРОСЕТИ ⚡</div>
+  <div class="night-sub">Свет вернётся через несколько секунд…</div>
+</div>
+
+<!-- ── Panic banner ────────────────────────────────────────────────── -->
+<div id="panic-banner">⚠ ПАНИКА! УПРАВЛЕНИЕ ИНВЕРТИРОВАНО ⚠</div>
+
+<!-- ── Notifications ───────────────────────────────────────────────── -->
+<div id="notif"></div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCREEN 1 — WELCOME
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="screen-welcome" class="screen active">
+  <div class="logo">
+    <h1>⚙ SHIFT FROM HELL</h1>
+    <p>Кооперативный саботаж на конвейере · 3–6 игроков</p>
+  </div>
+
+  <div class="card">
+    <h2>Войти в смену</h2>
+    <div class="form-group">
+      <label>Ваше имя</label>
+      <input type="text" id="player-name" placeholder="Имя рабочего…" maxlength="20" />
+    </div>
+    <button class="btn btn-primary" id="btn-create">🏭 Создать комнату</button>
+    <div class="divider">— или —</div>
+    <div class="form-group">
+      <label>Код комнаты</label>
+      <input type="text" id="room-code" placeholder="XXXX" maxlength="8" style="text-transform:uppercase;letter-spacing:4px" />
+    </div>
+    <button class="btn btn-primary" id="btn-join">🔗 Войти в комнату</button>
+  </div>
+
+  <div style="color:var(--text-dim);font-size:0.75rem;text-align:center;max-width:380px;line-height:1.6">
+    Каждый матч — 2 случайных скрытых правила.<br>
+    Вы узнаете их только в конце. Удачи.
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCREEN 2 — LOBBY
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="screen-lobby" class="screen">
+  <div class="logo" style="margin-bottom:4px">
+    <h1 style="font-size:1.2rem">⚙ SHIFT FROM HELL</h1>
+  </div>
+  <div class="room-label">КОД КОМНАТЫ</div>
+  <div class="room-id" id="lobby-room-id">----</div>
+
+  <div class="card" style="max-width:560px">
+    <h2 style="margin-bottom:14px">Выбери роль</h2>
+    <div class="roles-grid">
+      <div class="role-card" data-role="assembler">
+        <div class="role-icon">🔧</div>
+        <div class="role-name">Сборщик</div>
+        <div class="role-desc">Двигает детали. Видит цвет заказа, но не форму.</div>
+      </div>
+      <div class="role-card" data-role="inspector">
+        <div class="role-icon">🔍</div>
+        <div class="role-name">Инспектор</div>
+        <div class="role-desc">Видит полные заказы. Ставит штампы OK/БРАК. Не трогает детали.</div>
+      </div>
+      <div class="role-card" data-role="operator">
+        <div class="role-icon">🎛</div>
+        <div class="role-name">Оператор</div>
+        <div class="role-desc">Управляет конвейером и машинами. Часть кнопок — загадка.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <h3 style="margin-bottom:10px">Игроки в комнате</h3>
+      <div class="players-list" id="lobby-players"></div>
+    </div>
+
+    <button class="btn btn-success" id="btn-start" style="margin-top:16px;width:100%" disabled>
+      ▶ Начать смену
+    </button>
+    <div id="lobby-msg" style="margin-top:8px;font-size:0.75rem;color:var(--text-dim);text-align:center"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCREEN 3 — GAME
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="screen-game" class="screen">
+
+  <!-- Header -->
+  <div id="game-header">
+    <div class="hdr-room">КОМНАТА: <span id="gh-room">----</span></div>
+    <div class="hdr-timer" id="gh-timer">6:00</div>
+    <div class="hdr-score">
+      <div><div class="label">ОЧКИ</div><div class="val" id="gh-score">0</div></div>
+      <div><div class="label">ШТРАФЫ</div><div class="pen" id="gh-pen">0</div></div>
+      <div><div class="label">ОТПРАВЛЕНО</div><div class="val" id="gh-shipped">0</div></div>
+    </div>
+    <div class="hdr-role">РОЛЬ: <span id="gh-role" style="color:var(--accent2)">—</span></div>
+  </div>
+
+  <!-- Players bar -->
+  <div id="players-bar"></div>
+
+  <!-- Role panels (one shown at a time) -->
+  <div id="game-body" style="flex:1;overflow:hidden">
+
+    <!-- ASSEMBLER PANEL -->
+    <div id="panel-assembler" class="panel" style="width:100%;display:none;flex-direction:row;gap:12px">
+
+      <div style="flex:1;min-width:0">
+        <div class="panel-header">📦 СКЛАД</div>
+        <div class="zone-box zone-warehouse" id="zone-warehouse"></div>
+      </div>
+
+      <div style="flex:1;min-width:0">
+        <div class="panel-header">⚙ СБОРКА</div>
+        <div class="zone-box zone-assembly" id="zone-assembly"></div>
+        <button id="ship-btn" disabled>🚚 ОТПРАВИТЬ ВЫБРАННУЮ ДЕТАЛЬ</button>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:4px;text-align:center">
+          Выбери деталь в Сборке → выбери заказ → нажми Отправить
+        </div>
+      </div>
+
+      <div style="width:220px;flex-shrink:0">
+        <div class="panel-header">📋 ЗАКАЗЫ <span style="color:var(--text-dim)">(вижу только цвет)</span></div>
+        <div id="orders-assembler"></div>
+      </div>
+    </div>
+
+    <!-- INSPECTOR PANEL -->
+    <div id="panel-inspector" class="panel" style="width:100%;display:none;flex-direction:row;gap:12px">
+
+      <div style="flex:1;min-width:0">
+        <div class="panel-header">⚙ СБОРКА — ИНСПЕКЦИЯ</div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-val" id="insp-ok" style="color:var(--success)">0</div><div class="stat-lbl">ОДОБРЕНО</div></div>
+          <div class="stat-box"><div class="stat-val" id="insp-no" style="color:var(--danger)">0</div><div class="stat-lbl">БРАК</div></div>
+          <div class="stat-box"><div class="stat-val" id="insp-pending">0</div><div class="stat-lbl">НА ПРОВЕРКЕ</div></div>
+        </div>
+        <div class="zone-box zone-assembly" id="zone-assembly-insp" style="min-height:200px"></div>
+        <div class="inspector-actions" style="margin-top:10px">
+          <button class="btn btn-success" id="btn-approve" disabled style="flex:1">✅ OK — ОДОБРИТЬ</button>
+          <button class="btn btn-danger"  id="btn-reject"  disabled style="flex:1">❌ БРАК — ОТКЛОНИТЬ</button>
+        </div>
+      </div>
+
+      <div style="width:260px;flex-shrink:0">
+        <div class="panel-header">📋 ПОЛНЫЕ ЗАКАЗЫ</div>
+        <div id="orders-inspector"></div>
+      </div>
+    </div>
+
+    <!-- OPERATOR PANEL -->
+    <div id="panel-operator" class="panel" style="width:100%;display:none;flex-direction:row;gap:12px">
+
+      <div style="flex:1;min-width:0">
+        <div class="panel-header">🎛 ПУЛЬТ УПРАВЛЕНИЯ</div>
+        <div class="operator-grid">
+          <button class="op-btn" id="op-speed-up">
+            <div class="op-icon">⏩</div>
+            <div class="op-name">УСКОРИТЬ</div>
+            <div class="op-desc">Конвейер быстрее</div>
+          </button>
+          <button class="op-btn" id="op-speed-down">
+            <div class="op-icon">⏪</div>
+            <div class="op-name">ЗАМЕДЛИТЬ</div>
+            <div class="op-desc">Конвейер медленнее</div>
+          </button>
+          <button class="op-btn" id="op-press">
+            <div class="op-icon">🔨</div>
+            <div class="op-name">ПРЕСС</div>
+            <div class="op-desc">Утилизировать Сборку</div>
+          </button>
+          <button class="op-btn" id="op-sort">
+            <div class="op-icon">🗂</div>
+            <div class="op-name">СОРТИРОВЩИК</div>
+            <div class="op-desc">Группировка на складе</div>
+          </button>
+          <button class="op-btn mystery" id="op-mystery" style="grid-column:span 2">
+            <div class="op-icon">❓</div>
+            <div class="op-name">РЕЖИМ B / КАНАЛ 3</div>
+            <div class="op-desc">Эффект неизвестен. Действуй на свой страх и риск.</div>
+          </button>
+        </div>
+
+        <div class="conveyor-bar" style="margin-top:12px">
+          <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:4px">СКОРОСТЬ КОНВЕЙЕРА</div>
+          <div class="conveyor-track"><div class="conveyor-fill" id="conveyor-fill" style="width:33%"></div></div>
+          <div id="conveyor-speed-txt" style="font-size:0.75rem;color:var(--accent);text-align:center">1.0x</div>
+        </div>
+      </div>
+
+      <div style="width:240px;flex-shrink:0">
+        <div class="panel-header">📊 СТАТУС ЗАКАЗОВ</div>
+        <div id="orders-operator"></div>
+        <div class="panel-header" style="margin-top:12px">📟 ЛОГ</div>
+        <div class="op-log" id="op-log"></div>
+      </div>
+    </div>
+
+  </div><!-- /game-body -->
+
+  <div id="action-bar">
+    <span id="action-hint">Загрузка…</span>
+  </div>
+
+</div><!-- /screen-game -->
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCREEN 4 — END
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="screen-end" class="screen">
+  <div class="logo"><h1>⚙ СМЕНА ОКОНЧЕНА</h1></div>
+
+  <div class="final-stats" id="final-stats">
+    <div class="final-stat"><div class="val" id="end-score">0</div><div class="lbl">ОЧКОВ</div></div>
+    <div class="final-stat"><div class="val" id="end-shipped">0</div><div class="lbl">ОТПРАВЛЕНО</div></div>
+    <div class="final-stat"><div class="val" id="end-pen" style="color:var(--danger)">0</div><div class="lbl">ШТРАФОВ</div></div>
+  </div>
+
+  <div class="rules-reveal">
+    <h2 style="margin-bottom:12px;text-align:center">🔓 СКРЫТЫЕ ПРАВИЛА ЭТОГО МАТЧА</h2>
+    <div id="revealed-rules"></div>
+  </div>
+
+  <button class="btn btn-primary" id="btn-play-again" style="max-width:300px">🔄 Ещё одна смена</button>
+</div>
+
+<script src="client.js"></script>
+</body>
+</html>
