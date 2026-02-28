@@ -11,6 +11,7 @@ if not exist "logs" mkdir "logs"
 set "TS=%date:~-4%%date:~3,2%%date:~0,2%_%time:~0,2%%time:~3,2%%time:~6,2%"
 set "TS=%TS: =0%"
 set "MAIN_LOG=logs\start_%TS%.log"
+set "SETUP_LOG=logs\setup_%TS%.log"
 set "SERVER_OUT_LOG=logs\server_out_%TS%.log"
 set "SERVER_ERR_LOG=logs\server_err_%TS%.log"
 set "TUNNEL_LOG=logs\tunnel_%TS%.log"
@@ -27,17 +28,16 @@ call :require_command powershell || goto :fatal
 
 if not exist "node_modules" (
     call :log "[setup] node_modules не найден. Выполняю npm install..."
-    call :run_and_log "npm install" || goto :fatal
+    call :run_and_log "npm install" "%SETUP_LOG%" || goto :fatal
 ) else (
     call :log "[setup] Зависимости уже установлены."
 )
 
 call :log "[server] Запускаю Shift From Hell на http://localhost:3000 ..."
 if exist "%PID_FILE%" del /f /q "%PID_FILE%" >nul 2>&1
-powershell -NoProfile -Command "$ErrorActionPreference='Stop'; $p = Start-Process -FilePath 'node' -ArgumentList 'server.js' -WorkingDirectory '%SCRIPT_DIR%' -RedirectStandardOutput '%SCRIPT_DIR%%SERVER_OUT_LOG%' -RedirectStandardError '%SCRIPT_DIR%%SERVER_ERR_LOG%' -PassThru; Set-Content -Path '%SCRIPT_DIR%%PID_FILE%' -Value $p.Id -Encoding ascii" >> "%MAIN_LOG%" 2>&1
+powershell -NoProfile -Command "$ErrorActionPreference='Stop'; $p = Start-Process -FilePath 'node' -ArgumentList 'server.js' -WorkingDirectory '%SCRIPT_DIR%' -RedirectStandardOutput '%SCRIPT_DIR%%SERVER_OUT_LOG%' -RedirectStandardError '%SCRIPT_DIR%%SERVER_ERR_LOG%' -PassThru; Set-Content -Path '%SCRIPT_DIR%%PID_FILE%' -Value $p.Id -Encoding ascii" >nul 2>&1
 if errorlevel 1 (
     call :log "[error] Не удалось запустить server.js через PowerShell."
-    call :show_tail "%MAIN_LOG%"
     goto :fatal
 )
 
@@ -55,7 +55,6 @@ if not defined SERVER_PID (
 )
 if defined PID_BAD (
     call :log "[error] Получен некорректный PID: %SERVER_PID%"
-    call :show_tail "%MAIN_LOG%"
     goto :fatal
 )
 
@@ -92,11 +91,12 @@ exit /b 0
 
 :run_and_log
 set "STEP_CMD=%~1"
+set "STEP_LOG=%~2"
 call :log "[run] !STEP_CMD!"
-cmd /c "!STEP_CMD!" >> "%MAIN_LOG%" 2>&1
+cmd /c "!STEP_CMD!" >> "!STEP_LOG!" 2>&1
 if errorlevel 1 (
     call :log "[error] Ошибка на шаге: !STEP_CMD! (код !errorlevel!)."
-    call :show_tail "%MAIN_LOG%"
+    call :show_tail "!STEP_LOG!"
     exit /b 1
 )
 call :log "[ok] Шаг успешно завершён: !STEP_CMD!"
@@ -140,6 +140,7 @@ call :stop_server
 echo.
 echo [ERROR] Запуск не удался. Подробности:
 echo   - %MAIN_LOG%
+echo   - %SETUP_LOG%
 echo   - %SERVER_OUT_LOG%
 echo   - %SERVER_ERR_LOG%
 echo   - %TUNNEL_LOG%
